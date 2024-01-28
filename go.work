@@ -3,4 +3,5 @@ go 1.21.4
 use (
     ./code_loading/load_dll_go
     ./payloads/calc_exe
+    ./file_parsing/dll_parsing
 )
