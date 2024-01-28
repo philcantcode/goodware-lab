@@ -1,6 +1,10 @@
-package main
+package pipeline
 
-// IMAGE_DOS_HEADER represents the DOS header of an executable file.
+import (
+	"encoding/binary"
+	"log"
+)
+
 type IMAGE_DOS_HEADER struct {
 	E_magic    uint16     // Magic number
 	E_cblp     uint16     // Bytes on last page of file
@@ -23,13 +27,17 @@ type IMAGE_DOS_HEADER struct {
 	E_lfanew   int32      // File address of new exe header
 }
 
-// IMAGE_FILE_HEADER represents the file header of an executable file.
-type IMAGE_FILE_HEADER struct {
-	Machine              uint16 // Architecture type
-	NumberOfSections     uint16 // Number of sections
-	TimeDateStamp        uint32 // Time and date stamp
-	PointerToSymbolTable uint32 // File offset of symbol table
-	NumberOfSymbols      uint32 // Number of symbols
-	SizeOfOptionalHeader uint16 // Size of optional header
-	Characteristics      uint16 // File characteristics
+func dosHeader(pj *ParsingJob) error {
+	var dosHeader IMAGE_DOS_HEADER
+
+	// Read the DOS header
+	err := binary.Read(pj.Reader, binary.LittleEndian, &dosHeader)
+	if err != nil {
+		log.Printf("Error reading DOS header: %v", err)
+		return err
+	}
+
+	pj.DosHeader = dosHeader
+
+	return nil
 }
