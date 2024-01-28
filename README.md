@@ -24,6 +24,6 @@ Ref: Pre-compiled MinGW for win: https://winlibs.com/
 
 # AV Detection
 
-| Action | Description | AV Response (Defender) | Mitigation |
+| Action | Description | AV Response | Mitigation |
 |----------|----------|----------|----------|
 | Load DLL | Loaded a DLL with calc.exe payload | None | N/A |
