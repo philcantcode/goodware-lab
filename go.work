@@ -10,4 +10,5 @@ use (
     ./file_parsing/pe_parser
     
     ./anti_analysis/metadata_edit_go
+    ./anti_analysis/ppid_spoofing
 )
