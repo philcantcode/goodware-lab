@@ -4,6 +4,7 @@
 |----------|----------|
 | /payloads/benign_go_exe | Basic benign payload that pops open a message box using WIN32 API.  |
 | /payloads/calc_exe | DLL written in Go that pops the calculator open |
+| /payloads/direct_syscall_notepad_go | Uses direct syscalls to CreateProcess opening notepad.exe | 
 | /file_parsing/pe_parser | Golang pipeline that parses PE files iteratively by parsing bytes. |
 | /code_loading/load_dll_c | C program that loads a DLL |
 | /code_loading_load_dll_go | Go program that loads a DLL |
@@ -40,3 +41,4 @@ Ref: Pre-compiled MinGW for win: https://winlibs.com/
 |----------|----------|----------|----------|
 | Load DLL | Loaded a DLL with calc.exe payload | None | N/A |
 | File Bloating | Adds 200mb of nulls to an executable payload | If 4GB appended, flagged as Trojan | Try padding with legit strings instead of nulls |
+| Direct Syscalls to Open Process | Opens a process using direct syscalls | None - Would have expected it to not allow direct syscalls outside of `ntdll.dll` | N/A |
