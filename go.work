@@ -3,5 +3,7 @@ go 1.21.4
 use (
     ./code_loading/load_dll_go
     ./payloads/calc_exe
+    ./payloads/benign_go_exe
     ./file_parsing/pe_parser
+    ./anti_analysis/metadata_edit_go
 )

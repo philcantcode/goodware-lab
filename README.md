@@ -1,3 +1,14 @@
+# Contents
+
+| Project | Description |
+|----------|----------|
+| /payloads/benign_go_exe | Basic benign payload that pops open a message box using WIN32 API.  |
+| /payloads/calc_exe | DLL written in Go that pops the calculator open |
+| /file_parsing/pe_parser | Golang pipeline that parses PE files iteratively by parsing bytes. |
+| /code_loading/load_dll_c | C program that loads a DLL |
+| /code_loading_load_dll_go | Go program that loads a DLL |
+| /anti_analysis/metadata_edit_go | Go program that sets icon and windows metadata during build. |
+
 # Golang Setup
 
 - Every folder is a stand-alone Golang project.
