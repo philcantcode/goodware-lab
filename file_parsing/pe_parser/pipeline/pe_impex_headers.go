@@ -227,7 +227,8 @@ func importFunctionNames64(pj *ParsingJob) error {
 					return err
 				}
 
-				_, err = pj.Reader.Seek(int64(nameOffset), 0)
+				// Skip the hint
+				_, err = pj.Reader.Seek(int64(nameOffset+2), 0)
 				if err != nil {
 					fmt.Println("Error seeking to name offset:", err)
 					return err
@@ -245,7 +246,6 @@ func importFunctionNames64(pj *ParsingJob) error {
 				}
 
 				name := string(nameBytes)
-				fmt.Println("Imported function name:", name)
 				importNames = append(importNames, name)
 			}
 
