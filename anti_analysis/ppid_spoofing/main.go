@@ -51,42 +51,72 @@ func main() {
 	parentPPID := flag.Int("parent-ppid", 0, "Parent process PID")
 	flag.Parse()
 
-	fmt.Printf("Process To Create: %s\n", payload)
+	fmt.Printf("Payload (process) to be started: %s\n", *payload)
 
+	// Handle = uintptr
+	// Could only get handles to processes that of integrity level Medium or lower
 	parentHandle, err := OpenHandle(*parentPPID)
 	if err != nil {
 		log.Fatalf("Error opening handle to parent process: %s", err)
 	}
 	defer syscall.CloseHandle(parentHandle)
-	fmt.Printf("Parent Handle: %d\n", parentHandle)
+	fmt.Printf("Parent PID to be set as payload's parent: %d\n", parentHandle)
 
+	/*
+		An attribute list is a data structures that stores a list of attributes
+		associated with a process or thread. These attributes store information
+		such as the priority, scheduling algorith, state, CPU affinity and memory
+		address space.
+	*/
 	var lpSize uintptr = 0
-	threadAttribList := PROC_THREAD_ATTRIBUTE_LIST{}
+
+	/*
+		To initialize a PROC_THREAD_ATTRIBUTE_LIST, we need to call
+		InitializeProcThreadAttributeList twice. The first call is to get the
+		size of the list. The second call is to initialize the list.
+	*/
 	InitializeProcThreadAttributeList(nil, 1, 0, &lpSize)
-	// threadAttribList = (*PROC_THREAD_ATTRIBUTE_LIST)(unsafe.Pointer(windows.VirtualAlloc(0, lpSize, windows.MEM_COMMIT|windows.MEM_RESERVE, windows.PAGE_READWRITE)))
+	//var pThreadAttribList PROC_THREAD_ATTRIBUTE_LIST
 
-	InitializeProcThreadAttributeList(&threadAttribList, 1, 0, &lpSize)
+	//fmt.Printf("sThreadAttList: %+v\n", pThreadAttribList)
+	fmt.Printf("lpSize: %d\n", lpSize)
 
-	var parentHandlePtr uintptr = uintptr(parentHandle)
+	attribListBytes := make([]byte, lpSize)
+	pThreadAttribList := (*PROC_THREAD_ATTRIBUTE_LIST)(unsafe.Pointer(&attribListBytes[0]))
+	fmt.Printf("--> pThreadAttribList: %+v\n", pThreadAttribList)
 
-	UpdateProcThreadAttribute(
-		&threadAttribList,
-		0,
-		PROC_THREAD_ATTRIBUTE_PARENT_PROCESS,
-		&parentHandlePtr,
-		uintptr(unsafe.Sizeof(parentHandle)),
-		0,
-		nil,
-	)
-
-	fmt.Printf("sThreadAttList: %+v\n", threadAttribList)
-
-	startupInfoEx := StartupInfoEx{
-		StartupInfo: windows.StartupInfo{
-			Cb: uint32(unsafe.Sizeof(StartupInfoEx{})),
-		},
-		AttributeList: &threadAttribList,
+	// dwAttributeSize = 1 because we only need 1 attrib list
+	err = InitializeProcThreadAttributeList(pThreadAttribList, 1, 0, &lpSize)
+	if err != nil {
+		log.Fatalf("Error initializing thread attribute list: %s", err)
 	}
+
+	fmt.Printf("pThreadAttribList Size: %d bytes\n", unsafe.Sizeof(pThreadAttribList))
+
+	// Cast to uintptr (HANDLE is a uintptr)
+	var parentHandlePtr uintptr = uintptr(parentHandle)
+	var sizeOfParentHandlePtr uintptr = unsafe.Sizeof(&parentHandlePtr)
+
+	// Update individual parameters - in this case, the parent procese (PPID)
+	err = UpdateProcThreadAttribute(
+		pThreadAttribList,                    // Return value from InitializeProcThreadAttributeList
+		0,                                    // Reserved
+		PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, // Attribute - update parent process info
+		&parentHandlePtr,                     // Pointer to attribute value (lpValue)
+		sizeOfParentHandlePtr,                // Sizof(lpValue)
+		0,                                    // Reserved
+		nil,                                  // Reserved
+	)
+	if err != nil {
+		log.Fatalf("Error updating thread attribute list: %s", err)
+	}
+
+	fmt.Printf("After Update --> pThreadAttribList: %+v\n", pThreadAttribList)
+
+	// Only member that needs to be set is Cb to size of StartupInfoEx
+	var startupInfoEx StartupInfoEx
+	startupInfoEx.StartupInfo.Cb = uint32(unsafe.Sizeof(startupInfoEx))
+	startupInfoEx.AttributeList = pThreadAttribList
 
 	// CreateProcessW
 	parentProcessPathPtr, err := syscall.UTF16PtrFromString(*payload)
@@ -96,6 +126,9 @@ func main() {
 
 	procInfo := windows.ProcessInformation{}
 
+	/* The EXTENDED_STARTUPINFO_PRESENT flag gives further control over the created
+	proces. It allows some information about the process to be modified such as the
+	PPID */
 	err = CreateProcess(
 		nil,
 		parentProcessPathPtr,
@@ -111,11 +144,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error creating process: %s", err)
 	}
+
+	// Wait for user input
+	var input string
+	fmt.Println("Press enter to exit...")
+	fmt.Scanln(&input)
 }
+
+const PROCESS_ALL_ACCESS = windows.STANDARD_RIGHTS_REQUIRED | windows.SYNCHRONIZE | 0xFFFF
 
 // Opens a handle to a process given its PID.
 func OpenHandle(pid int) (handle syscall.Handle, err error) {
-	handle, err = syscall.OpenProcess(syscall.PROCESS_QUERY_INFORMATION, false, uint32(pid))
+	handle, err = syscall.OpenProcess(PROCESS_ALL_ACCESS, false, uint32(pid))
 	if err != nil {
 		return handle, err
 	}
