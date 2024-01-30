@@ -47,7 +47,7 @@ type PROC_THREAD_ATTRIBUTE_ENTRY struct {
 }
 
 func main() {
-	payload := flag.String("payload", "C:\\code\\mal-lab\\payloads\\benign_go_exe\\benign_go.exe", "Parent argument")
+	payload := flag.String("payload", "C:\\Program Files (x86)\\Jagex Launcher\\JagexLauncher.exe", "Parent argument")
 	parentPPID := flag.Int("parent-ppid", 0, "Parent process PID")
 	flag.Parse()
 
@@ -144,6 +144,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error creating process: %s", err)
 	}
+
+	fmt.Printf("Process created successfully!\n")
+	fmt.Printf("Process Info: %+v\n", procInfo)
 
 	// Wait for user input
 	var input string
