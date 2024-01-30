@@ -76,17 +76,17 @@ func main() {
 		size of the list. The second call is to initialize the list.
 	*/
 	InitializeProcThreadAttributeList(nil, 1, 0, &lpSize)
-	//var pThreadAttribList PROC_THREAD_ATTRIBUTE_LIST
+	var pThreadAttribList PROC_THREAD_ATTRIBUTE_LIST
 
 	//fmt.Printf("sThreadAttList: %+v\n", pThreadAttribList)
 	fmt.Printf("lpSize: %d\n", lpSize)
 
-	attribListBytes := make([]byte, lpSize)
-	pThreadAttribList := (*PROC_THREAD_ATTRIBUTE_LIST)(unsafe.Pointer(&attribListBytes[0]))
+	// attribListBytes := make([]byte, lpSize)
+	// pThreadAttribList := (*PROC_THREAD_ATTRIBUTE_LIST)(unsafe.Pointer(&attribListBytes[0]))
 	fmt.Printf("--> pThreadAttribList: %+v\n", pThreadAttribList)
 
 	// dwAttributeSize = 1 because we only need 1 attrib list
-	err = InitializeProcThreadAttributeList(pThreadAttribList, 1, 0, &lpSize)
+	err = InitializeProcThreadAttributeList(&pThreadAttribList, 1, 0, &lpSize)
 	if err != nil {
 		log.Fatalf("Error initializing thread attribute list: %s", err)
 	}
@@ -99,7 +99,7 @@ func main() {
 
 	// Update individual parameters - in this case, the parent procese (PPID)
 	err = UpdateProcThreadAttribute(
-		pThreadAttribList,                    // Return value from InitializeProcThreadAttributeList
+		&pThreadAttribList,                   // Return value from InitializeProcThreadAttributeList
 		0,                                    // Reserved
 		PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, // Attribute - update parent process info
 		&parentHandlePtr,                     // Pointer to attribute value (lpValue)
@@ -116,7 +116,7 @@ func main() {
 	// Only member that needs to be set is Cb to size of StartupInfoEx
 	var startupInfoEx StartupInfoEx
 	startupInfoEx.StartupInfo.Cb = uint32(unsafe.Sizeof(startupInfoEx))
-	startupInfoEx.AttributeList = pThreadAttribList
+	startupInfoEx.AttributeList = &pThreadAttribList
 
 	// CreateProcessW
 	parentProcessPathPtr, err := syscall.UTF16PtrFromString(*payload)
