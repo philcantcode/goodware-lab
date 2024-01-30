@@ -10,6 +10,7 @@
 | /code_loading_load_dll_go | Go program that loads a DLL |
 | /anti_analysis/metadata_edit_go | Go program that sets icon and windows metadata during build. |
 | /anti_analysis/file_float | Python script that adds 200mb nulls to the end of a file to bloat it in order to bypass AV checks that might be limited to smaller files. |
+| /anti_analysis/ppid_spoofing | Spoofs the parent PID of a newly created process. |
 
 # Golang Setup
 
@@ -42,6 +43,7 @@ Ref: Pre-compiled MinGW for win: https://winlibs.com/
 | Load DLL | Loaded a DLL with calc.exe payload | None | N/A |
 | File Bloating | Adds 200mb of nulls to an executable payload | If 4GB appended, flagged as Trojan | Try padding with legit strings instead of nulls |
 | Direct Syscalls to Open Process | Opens a process using direct syscalls | None - Would have expected it to not allow direct syscalls outside of `ntdll.dll` | N/A |
+| PPID Spoofing | Spoofs the PPID using direct system called. | None | N/A |
 
 # Tools
 
