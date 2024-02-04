@@ -49,3 +49,15 @@ Ref: Pre-compiled MinGW for win: https://winlibs.com/
 
 - Process Hacker 2 (System Informer)
 - PE Bear
+- Open Hardware Monitor
+- Detect It Easy
+- https://antiscan.me/ (Like VirusTotal but doesn't share with vendors)
+- https://virusscan.jotti.org/
+- https://www.virscan.org/
+- PECloak
+
+# AV Detection
+
+- https://github.com/ethereal-vx/Antivirus-Artifacts
+
+![Alt text](image.png)

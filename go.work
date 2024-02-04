@@ -11,4 +11,5 @@ use (
     
     ./anti_analysis/metadata_edit_go
     ./anti_analysis/ppid_spoofing
+    ./anti_analysis/detect_dll_hooks
 )
