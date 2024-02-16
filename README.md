@@ -43,7 +43,7 @@ Ref: Pre-compiled MinGW for win: https://winlibs.com/
 | Load DLL | Loaded a DLL with calc.exe payload | None | N/A |
 | File Bloating | Adds 200mb of nulls to an executable payload | If 4GB appended, flagged as Trojan | Try padding with legit strings instead of nulls |
 | Direct Syscalls to Open Process | Opens a process using direct syscalls | None - Would have expected it to not allow direct syscalls outside of `ntdll.dll` | N/A |
-| PPID Spoofing | Spoofs the PPID using direct system called. | None | N/A |
+| PPID Spoofing | Spoofs the PPID using direct system called. | None | Easy to detect with ETW. |
 
 # Tools
 
