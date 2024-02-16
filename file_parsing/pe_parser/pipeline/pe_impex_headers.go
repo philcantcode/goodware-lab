@@ -2,8 +2,8 @@ package pipeline
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
+	"log"
 )
 
 // Exports
@@ -59,7 +59,8 @@ func exportTable(pj *ParsingJob) error {
 
 	// Ensure that the export table address is valid
 	if exportTableAddress == 0 {
-		return errors.New("no export table present")
+		log.Printf("No export table present")
+		return nil
 	}
 
 	// Convert the RVA to file offset here (this code is not included, as it depends on the specifics of your implementation)
@@ -149,7 +150,8 @@ func importTable(pj *ParsingJob) error {
 
 	// Ensure that the import table address is valid
 	if importTableAddress == 0 {
-		return errors.New("no import table present")
+		log.Printf("No import table present")
+		return nil
 	}
 
 	// Convert the RVA to file offset

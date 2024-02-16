@@ -1,4 +1,4 @@
-module github.com/philcantcode/mal-lab/payloads/benign_go_exe
+module github.com/philcantcode/goodware-lab/payloads/benign_go_exe
 
 go 1.21.4
 

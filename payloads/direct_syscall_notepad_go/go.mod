@@ -1,4 +1,4 @@
-module github.com/philcantcode/mal-lab/payloads/direct_syscall_notepad_go
+module github.com/philcantcode/goodware-lab/payloads/direct_syscall_notepad_go
 
 go 1.21.4
 

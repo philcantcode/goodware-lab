@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"syscall"
 	"unsafe"
 
@@ -12,6 +13,10 @@ var kernel32 = windows.NewLazySystemDLL("kernel32.dll")
 var procCreateProcessW = kernel32.NewProc("CreateProcessW")
 var procVirtualAllocEx = kernel32.NewProc("VirtualAllocEx")
 var procWriteProcessMemory = kernel32.NewProc("WriteProcessMemory")
+var procGetThreadContext = kernel32.NewProc("GetThreadContext")
+var procVirtualProtectEx = kernel32.NewProc("VirtualProtectEx")
+var procResumeThread = kernel32.NewProc("ResumeThread")
+var procSetThreadContext = kernel32.NewProc("SetThreadContext")
 
 type StartupInfoEx struct {
 	windows.StartupInfo
@@ -75,4 +80,98 @@ func WriteProcessMemory(hProcess windows.Handle, lpBaseAddress uintptr, lpBuffer
 		err = error(e1)
 	}
 	return
+}
+
+const (
+	// CONTEXT_FLAGS
+	CONTEXT_AMD64           = 0x00100000
+	CONTEXT_CONTROL         = (CONTEXT_AMD64 | 0x00000001)
+	CONTEXT_INTEGER         = (CONTEXT_AMD64 | 0x00000002)
+	CONTEXT_SEGMENTS        = (CONTEXT_AMD64 | 0x00000004)
+	CONTEXT_FLOATING_POINT  = (CONTEXT_AMD64 | 0x00000008)
+	CONTEXT_DEBUG_REGISTERS = (CONTEXT_AMD64 | 0x00000010)
+
+	// Use CONTEXT_FULL for demonstration purposes.
+	CONTEXT_FULL = (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_FLOATING_POINT)
+)
+
+type THEAD_CONTEXT_64 struct {
+	P1Home       uint64
+	P2Home       uint64
+	P3Home       uint64
+	P4Home       uint64
+	P5Home       uint64
+	P6Home       uint64
+	ContextFlags uint32
+	MxCsr        uint32
+	SegCs        uint16
+	SegDs        uint16
+	SegEs        uint16
+	SegFs        uint16
+	SegGs        uint16
+	SegSs        uint16
+	EFlags       uint32
+	Dr0          uint64
+	Dr1          uint64
+	Dr2          uint64
+	Dr3          uint64
+	Dr6          uint64
+	Dr7          uint64
+	Rax          uint64
+	Rcx          uint64
+	Rdx          uint64 // Points to the PEB at process creation
+	Rbx          uint64
+	Rsp          uint64
+	Rbp          uint64
+	Rsi          uint64
+	Rdi          uint64
+	R8           uint64
+	R9           uint64
+	R10          uint64
+	R11          uint64
+	R12          uint64
+	R13          uint64
+	R14          uint64
+	R15          uint64
+	Rip          uint64
+	// Define the rest of the CONTEXT structure as needed.
+}
+
+func GetThreadContextFull(threadHandle windows.Handle, context *THEAD_CONTEXT_64) error {
+	context.ContextFlags = CONTEXT_FULL
+	ret, _, err := procGetThreadContext.Call(
+		uintptr(threadHandle),
+		uintptr(unsafe.Pointer(context)),
+	)
+	if ret == 0 {
+		return err
+	}
+	return nil
+}
+
+func VirtualProtectEx(hProcess windows.Handle, lpAddress uintptr, dwSize uintptr, flNewProtect uint32, lpflOldProtect *uint32) (err error) {
+	r1, _, e1 := syscall.Syscall6(procVirtualProtectEx.Addr(), 5, uintptr(hProcess), uintptr(lpAddress), uintptr(dwSize), uintptr(flNewProtect), uintptr(unsafe.Pointer(lpflOldProtect)), 0)
+	if r1 == 0 {
+		err = error(e1)
+	}
+	return
+}
+
+func ResumeThread(threadHandle windows.Handle) error {
+	ret, _, err := procResumeThread.Call(uintptr(threadHandle))
+	if ret == ^uintptr(0) { // Equivalent to DWORD(-1)
+		return fmt.Errorf("ResumeThread failed: %v", err)
+	}
+	return nil
+}
+
+func SetThreadContext(threadHandle windows.Handle, context *THEAD_CONTEXT_64) error {
+	ret, _, err := procSetThreadContext.Call(
+		uintptr(threadHandle),
+		uintptr(unsafe.Pointer(context)),
+	)
+	if ret == 0 {
+		return err
+	}
+	return nil
 }

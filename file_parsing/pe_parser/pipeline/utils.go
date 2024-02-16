@@ -1,7 +1,6 @@
 package pipeline
 
 import (
-	"errors"
 	"log"
 	"os"
 )
@@ -43,5 +42,6 @@ func convertRvaToFileOffset(rva uint32, sectionHeaders []IMAGE_SECTION_HEADER) (
 			return fileOffset, nil
 		}
 	}
-	return 0, errors.New("RVA not found in any section")
+
+	return 0, nil
 }

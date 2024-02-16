@@ -17,7 +17,7 @@
 - Every folder is a stand-alone Golang project.
 - Every folder needs to be initialised with:
 
-1. `go mod init github.com/philcantcode/mal-lab/<parent-folder>/<sub-folder>`
+1. `go mod init github.com/philcantcode/goodware-lab/<parent-folder>/<sub-folder>`
 2. `go mod tidy`
 3. In the root `go.work` add `./<parent-folder>/<sub-folder>` 
 
@@ -61,3 +61,7 @@ Ref: Pre-compiled MinGW for win: https://winlibs.com/
 - https://github.com/ethereal-vx/Antivirus-Artifacts
 
 ![Alt text](image.png)
+
+# Hints and Hacks
+
+- Before process initialisation (e.g., started in the SUSPENDED state) the `RDX` register parameter of the main thread context will point to the PEB. 
